@@ -14,7 +14,7 @@ class ShapeBitmapExporter
 	public static function process(exporter:ShapeCommandExporter):Array<BitmapFill>
 	{
 		var bitmaps = [];
-		var commands = exporter.commands.copy();
+		var commands = exporter.commands != null ? addMissingEndFills(exporter.commands) : null;
 		var eligible = (commands != null && commands.length > 0 && commands.length % 9 == 0);
 
 		if (!eligible)
@@ -34,6 +34,34 @@ class ShapeBitmapExporter
 		}
 
 		return bitmaps;
+	}
+
+	/**
+		SWFShape used to write an EndFill right after each cleared line style
+		(its "no fill" check never matched). It no longer does, so put it back
+		here, so the 9-command pattern below matches shapes from either version.
+	**/
+	private static function addMissingEndFills(commands:Array<ShapeCommand>):Array<ShapeCommand>
+	{
+		var result = [];
+
+		for (i in 0...commands.length)
+		{
+			var command = commands[i];
+			result.push(command);
+
+			switch (command)
+			{
+				case LineStyle(null, null, null, null, null, null, null, null):
+					if (i + 1 >= commands.length || !commands[i + 1].match(EndFill))
+					{
+						result.push(EndFill);
+					}
+				default:
+			}
+		}
+
+		return result;
 	}
 
 	private static function processNextBitmap(commands:Array<ShapeCommand>):Option<BitmapFill>
